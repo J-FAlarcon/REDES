@@ -15,6 +15,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 import time
 import logging
+import datetime
 
 ETH_FRAME_MAX = 1514
 PROMISC = 1
@@ -31,14 +32,29 @@ def signal_handler(nsignal,frame):
 
 def procesa_paquete(us,header,data):
 	global num_paquete, pdumper
-	logging.info('Nuevo paquete de {} bytes capturado en el timestamp UNIX {}.{}'.format(header.len,header.ts.tv_sec,header.ts.tv_sec))
+	logging.info('Nuevo paquete de {} bytes capturado en el timestamp UNIX {}.{}'.format(header.len,header.ts.tv_sec,header.ts.tv_usec))
 	num_paquete += 1
-	#########
+	
+	
 	#TODO imprimir los N primeros bytes
-	for i in range(nbytes):
-		print(' '.join(['{:02X}'.format(data)[i]]))
+	'''i = 0
+	while i <= (min(args.nbytes, header.caplen)):
+		print('{:02X}'.format(data[i]))
+		i +=1'''
+	#TODO imprimir los N primeros bytes
+	# impr = ' '.join(['{:02X}'.format(data[i]) for i in range(min(args.nbytes, header.caplen))]
+	# print(impr)
 
-	#Escribir el tráfico al fichero de captura con el offset temporal
+	for i in range(min(args.nbytes, header.caplen)):
+		print('{:02X}'.format(data[i]), end=' ')
+
+	if pdumper:
+		header.ts.tv_sec += TIME_OFFSET
+		#Escribir el tráfico al fichero de captura con el offset temporal
+		pcap_dump(pdumper, header, data)
+	
+
+
 
 	
 if __name__ == "__main__":
@@ -71,10 +87,14 @@ if __name__ == "__main__":
 	#TODO abrir la interfaz especificada para captura o la traza
 	if args.interface:
 		handle = pcap_open_live(args.interface, ETH_FRAME_MAX, NO_PROMISC, TO_MS, errbuf)
-		
 		if handle == None:
 			print('Error creando una interfaz para captura:\n') 
 			print(errbuf)
+
+		##########
+		#TODO abrir un dumper para volcar el tráfico (si se ha especificado interfaz) 
+		fecha = datetime.datetime.now().timestamp()
+		pdumper = pcap_dump_open(pcap_open_dead(DLT_EN10MB, ETH_FRAME_MAX), 'captura.' + str(args.interface) + '.' + str(fecha) + '.pcap')
 
 	else:
 		handle = pcap_open_offline(args.tracefile, errbuf)
@@ -82,10 +102,8 @@ if __name__ == "__main__":
 			print('Error abriendo el fichero de traza:\n') 
 			print(errbuf)
 
-	##########
-	#TODO abrir un dumper para volcar el tráfico (si se ha especificado interfaz) 
-	pdumper = pcap_dump_open(pcap_open_dead(DLT_EN10MB, ETH_FRAME_MAX), 'salida.pcap')
-	pcap_dump(pdumper, h ,sp)
+	
+	
 	
 	
 	
