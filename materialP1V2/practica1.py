@@ -32,26 +32,23 @@ def signal_handler(nsignal,frame):
 
 def procesa_paquete(us,header,data):
 	global num_paquete, pdumper
+
 	logging.info('Nuevo paquete de {} bytes capturado en el timestamp UNIX {}.{}'.format(header.len,header.ts.tv_sec,header.ts.tv_usec))
 	num_paquete += 1
 	
 	
 	#TODO imprimir los N primeros bytes
-	'''i = 0
-	while i <= (min(args.nbytes, header.caplen)):
-		print('{:02X}'.format(data[i]))
-		i +=1'''
-	#TODO imprimir los N primeros bytes
-	# impr = ' '.join(['{:02X}'.format(data[i]) for i in range(min(args.nbytes, header.caplen))]
-	# print(impr)
 
 	for i in range(min(args.nbytes, header.caplen)):
 		print('{:02X}'.format(data[i]), end=' ')
 
+	print('\n')
+	
 	if pdumper:
 		header.ts.tv_sec += TIME_OFFSET
 		#Escribir el tráfico al fichero de captura con el offset temporal
 		pcap_dump(pdumper, header, data)
+		
 	
 
 
@@ -104,10 +101,6 @@ if __name__ == "__main__":
 
 	
 	
-	
-	
-	
-	
 	ret = pcap_loop(handle, -1, procesa_paquete, None)
 	if ret == -1:
 		logging.error('Error al capturar un paquete')
@@ -119,4 +112,7 @@ if __name__ == "__main__":
 	###########
 	#TODO si se ha creado un dumper cerrarlo
 	
+	if pdumper:
+		pcap_dump_close(pdumper)
 
+	pcap_close(handle)
