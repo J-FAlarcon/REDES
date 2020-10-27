@@ -51,7 +51,7 @@ if __name__ == "__main__":
 		stopEthernetLevel()
 		sys.exit(-1)
 	''' Bucle infinito que leerá las opciones por teclado y ejecutará las acciones correspondientes
-		(resolver una dirección, imprimrir la caché o salir)
+		(resolver una dirección, imprimir la caché o salir)
 	'''
 	while True:
 		try:

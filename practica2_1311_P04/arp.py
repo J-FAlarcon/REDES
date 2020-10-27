@@ -133,6 +133,13 @@ def createARPRequest(ip:int) -> bytes:
     frame = bytes()
     logging.debug('Función no implementada')
     #TODO implementar aqui
+    frame += ARPHeader # cabecera común
+    frame += bytes([0x00, 0x01]) # opcode
+    frame += myMAC # dir. ethernet (MAC) del emisor
+    frame += myIP # dir. IP del emisor
+    frame += bytes([0x00]*6) # dir. nula al ser opcode 0x0001
+    frame += struct.pack('!H', ip) # dir. ip del receptor
+
     return frame
 
     
@@ -171,8 +178,19 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    logging.debug('Función no implementada')
+    logging.debug('Función en pruebas')
     #TODO implementar aquí
+    payload = data[6:]
+    if data[:6] == ARPHeader:
+        if data[6:8] == bytes([0x00,0x01]):
+            processARPRequest(payload, srcMac)
+        elif data[6:8] == bytes([0x00, 0x02]):
+            processARPReply(payload, srcMac)
+        else:
+            return
+
+    return
+
 
 
 

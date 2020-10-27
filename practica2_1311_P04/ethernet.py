@@ -16,6 +16,7 @@ import threading
 ETH_FRAME_MAX = 1514
 #Tamaño mínimo de una trama Ethernet
 ETH_FRAME_MIN = 60
+ETH_HLEN = 14
 PROMISC = 1
 NO_PROMISC = 0
 TO_MS = 10
@@ -46,7 +47,8 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
         Descripción: Esta función se ejecutará cada vez que llegue una trama Ethernet. 
             Esta función debe realizar, al menos, las siguientes tareas:
                 -Extraer los campos de dirección Ethernet destino, origen y ethertype
-                -Comprobar si la dirección destino es la propia o la de broadcast. En caso de que la trama no vaya en difusión o no sea para nuestra interfaz la descartaremos (haciendo un return).
+                -Comprobar si la dirección destino es la propia o la de broadcast. En caso de que la trama 
+                 no vaya en difusión o no sea para nuestra interfaz la descartaremos (haciendo un return).
                 -Comprobar si existe una función de callback de nivel superior asociada al Ethertype de la trama:
                     -En caso de que exista, llamar a la función de nivel superior con los parámetros que corresponde:
                         -us (datos de usuario)
@@ -61,9 +63,24 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
         Retorno:
             -Ninguno
     '''
-    logging.debug('Trama nueva. Función no implementada')
+    logging.debug('Trama nueva. Función en pruebas')
+
     #TODO: Implementar aquí el código que procesa una trama Ethernet en recepción
+    #Extracción de campos
+    destino = data[:6]
+    origen = data[6:12]
+    ethertype = data[12:14]
+    payload = data[14:]
+    header.len -= ETH_HLEN
     
+    if destino == broadcastAddr or destino == macAddress:
+        if upperProtos[ethertype]:
+            upperProtos[ethertype](us, header, payload, origen)
+            return
+        '''Las funciones serán process_IP_datagram con ethertype = 0x0800 o
+           process_arp_frame con ethertype = 0x0806'''
+
+    return
 
 def process_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> None:
     '''
@@ -167,7 +184,14 @@ def stopEthernetLevel()->int:
         Argumentos: Ninguno
         Retorno: 0 si todo es correcto y -1 en otro caso
     '''
-    logging.debug('Función no implementada')
+    recvThread().stop()
+
+    pcap_close(handle)
+
+    levelInitialized = False
+
+    logging.debug('Función en pruebas')
+
     return 0
     
 def sendEthernetFrame(data:bytes,len:int,etherType:int,dstMac:bytes) -> int:
