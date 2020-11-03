@@ -142,8 +142,9 @@ def registerCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes]
         Retorno: Ninguno 
     '''
     global upperProtos
+    upperProtos[ethertype] = callback_fun
     #upperProtos es el diccionario que relaciona función de callback y ethertype
-    logging.debug('Función no implementada')
+    return
     
 
 def startEthernetLevel(interface:str) -> int:
@@ -164,12 +165,20 @@ def startEthernetLevel(interface:str) -> int:
     handle = None
     logging.debug('Función no implementada')
     #TODO: implementar aquí la inicialización de la interfaz y de las variables globales
+    if levelInitialized:
+        return -1
+    errbuf = bytearray()
+    macAddress = getHwAddr(interface)
+    if macAddress == None:
+        return -1
+    handle = pcap_open_live(interface, ETH_FRAME_MAX, PROMISC, TO_MS, errbuf)
 
     #Una vez hemos abierto la interfaz para captura y hemos inicializado las variables globales (macAddress, handle y levelInitialized) arrancamos
     #el hilo de recepción
     recvThread = rxThread()
     recvThread.daemon = True
     recvThread.start()
+    levelInitialized = True
     return 0
 
 def stopEthernetLevel()->int:
