@@ -89,6 +89,21 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
             -MAC: dirección MAC origen extraída por el nivel Ethernet
         Retorno: Ninguno
     '''
+    targetMAC = bytes[]
+    if(MAC not targetMAC): 
+        return
+
+    targetIP = bytes[]
+    senderIP = bytes[]
+
+    if(targetIP not senderIP):
+        return
+    else:
+        createARPReply(targetIP, MAC)
+        sendEthernetFrame( , , bytes[], targetMAC)
+
+
+
     logging.debug('Función no implementada')
     #TODO implementar aquí
 def processARPReply(data:bytes,MAC:bytes)->None:
@@ -156,6 +171,13 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
     frame = bytes()
     logging.debug('Función no implementada')
     #TODO implementar aqui
+    frame += ARPHeader # cabecera común
+    frame += bytes([0x00, 0x02]) # opcode
+    frame += MAC # dir. ethernet (MAC) del emisor
+    frame += IP # dir. IP del emisor
+    frame += myMAC
+    frame += struct.pack('!H', myIP) # dir. ip del receptor
+
     return frame
 
 
@@ -194,7 +216,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
 
 
 
-def initARP(interface:str) -> int:
+def initARP(interface:str) -> int: 
     '''
         Nombre: initARP
         Descripción: Esta función construirá inicializará el nivel ARP. Esta función debe realizar, al menos, las siguientes tareas:
@@ -204,6 +226,17 @@ def initARP(interface:str) -> int:
             -Marcar la variable de nivel ARP inicializado a True
     '''
     global myIP,myMAC,arpInitialized
+
+    register_callback(process_arp_frame: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes],None], 0x0806)
+    myIP = getIP(interface)
+    myMAC = getHwAddr(interface)
+
+    frame = createARPRequest(myIP)
+    if(getHwAddr(frame) not myIP):
+        return error
+
+    arpInitialized = True
+
     logging.debug('Función no implementada')
     #TODO implementar aquí
     return 0
