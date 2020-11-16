@@ -195,7 +195,7 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
     '''
     global myMAC,myIP
     frame = bytes()
-    logging.debug('Función no implementada')
+    logging.debug('Función implementada')
     #TODO implementar aqui
     frame += ARPHeader # cabecera común
     frame += bytes([0x00, 0x02]) # opcode
@@ -228,6 +228,8 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     '''
     logging.debug('Función en pruebas')
     #TODO implementar aquí
+    
+
     payload = data[6:]
     if data[:6] == ARPHeader:
         if data[6:8] == bytes([0x00,0x01]):
@@ -252,20 +254,22 @@ def initARP(interface:str) -> int:
             -Marcar la variable de nivel ARP inicializado a True
     '''
     global myIP,myMAC,arpInitialized
-
-    register_callback(process_arp_frame: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes],None], 0x0806)
+    b = bytes([0x08, 0x06])
+    etherType = struct.unpack('!H', b)
+    registerCallback(process_arp_frame, etherType)
     myIP = getIP(interface)
     myMAC = getHwAddr(interface)
 
-    frame = createARPRequest(myIP)
-    if(getHwAddr(frame) not myIP):
-        return error
+    gratuito = ARPResolution(myIP)
+    if(gratuito != None):
+        return -1
 
     arpInitialized = True
 
-    logging.debug('Función no implementada')
-    #TODO implementar aquí
+    logging.debug('Función implementada')
+    
     return 0
+
 
 def ARPResolution(ip:int) -> bytes:
     '''
@@ -288,6 +292,7 @@ def ARPResolution(ip:int) -> bytes:
     '''
     global requestedIP,awaitingResponse,resolvedMAC
     
+    srcIP = struct.pack('!I', ip)
     with cacheLock:
         if ip in cache:
             return cache[ip]
@@ -295,7 +300,7 @@ def ARPResolution(ip:int) -> bytes:
     with globalLock:
         awaitingResponse = True
         requestedIP = ip
-        peticion = createARPReply(ip)
+        peticion = createARPRequest(ip)
     
     for i in range(3):
         sendEthernetFrame(peticion, len(peticion), 0x0806, broadcastAddr)
