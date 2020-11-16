@@ -302,8 +302,10 @@ def ARPResolution(ip:int) -> bytes:
         requestedIP = ip
         peticion = createARPRequest(ip)
     
+    etherType = struct.unpack('!H', bytes([0x08, 0x06]))
+
     for i in range(3):
-        sendEthernetFrame(peticion, len(peticion), 0x0806, broadcastAddr)
+        sendEthernetFrame(peticion, len(peticion), etherType, broadcastAddr)
         time.sleep(0.1)
         with globalLock:
             if awaitingResponse == False:

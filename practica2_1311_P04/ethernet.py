@@ -224,7 +224,7 @@ def sendEthernetFrame(data:bytes,len:int,etherType:int,dstMac:bytes) -> int:
     trama = bytes()
     trama = dstMac + macAddress + struct.pack('!H', etherType) + data
 
-    if len+14>ETH_FRAME_MAX:
+    if len+14 > ETH_FRAME_MAX:
         return -1
 
     tam = ETH_FRAME_MIN - 14 - len
