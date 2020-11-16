@@ -35,7 +35,9 @@ awaitingResponse = False
 #Variable para proteger la caché
 cacheLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
-cache = ExpiringDict(max_len=100, max_age_seconds=10)
+cache = ExpiringDict(max_len=100, max_age_seconds=10)# Guarda los arrays de bytes correspondientes, NO GUARDA ENTEROS
+
+
 
 
 
@@ -89,18 +91,24 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
             -MAC: dirección MAC origen extraída por el nivel Ethernet
         Retorno: Ninguno
     '''
-    targetMAC = bytes[]
-    if(MAC not targetMAC): 
+    global myIP
+    senderMAC = data[8:14]  '''6 bytes en la cabecera que corresponden a la direccion ethernet origen'''
+    if(MAC != senderMAC): 
         return
 
-    targetIP = bytes[]
-    senderIP = bytes[]
+    senderIP = data[14:18] '''4 bytes de la cabecera (en el array data)'''
+    targetIP = data[24:28] '''4 bytes de la cabecera (en el array data)'''
 
-    if(targetIP not senderIP):
+    nIP = struct.unpack('!I', targetIP)
+
+    if(nIP != myIP):
         return
     else:
-        createARPReply(targetIP, MAC)
-        sendEthernetFrame( , , bytes[], targetMAC)
+        tipo = bytes([0x08, 0x06])
+        etherType = struct.unpack('!H', tipo)
+        targetMAC = ARPResolution(nIP) 
+        frame = createARPReply(nIP, MAC)
+        sendEthernetFrame(frame, len(frame), etherType, targetMAC)
 
 
 
@@ -130,21 +138,26 @@ def processARPReply(data:bytes,MAC:bytes)->None:
         Retorno: Ninguno
     '''
     global requestedIP,resolvedMAC,awaitingResponse,cache
-    macOrd = data[8:14]
-    ipOrd = struct.unpack('!I', data[14:18])[0]
-    macDest = data[18:24]
-    ipDest = struct.unpack('!I', data[24:28])[0]
+    senderMAC = data[8:14]
+    if senderMAC != MAC:
+        return
 
-    if(MAC != myIP):
+    senderIP = data[14:18]
+    targetMAC = data[18:24]
+    targetIP = struct.unpack('!I', data[24:28])
+
+    if(targetIP != myIP):
         return
-    if(ipDest != myIP):
-        return
+
     with globalLock:
-        resolvedMAC = macOrd
+        if targetIP != requestedIP:
+            return
+        resolvedMAC = senderMAC
         awaitingResponse = False
         requestedIP = None
+
     with cacheLock:
-        cache[ipOrd] = macOrd
+        cache[senderIP] = senderMAC
         
 
 
@@ -159,14 +172,14 @@ def createARPRequest(ip:int) -> bytes:
     '''
     global myMAC,myIP
     frame = bytes()
-    logging.debug('Función no implementada')
-    #TODO implementar aqui
+    
     frame += ARPHeader # cabecera común
     frame += bytes([0x00, 0x01]) # opcode
     frame += myMAC # dir. ethernet (MAC) del emisor
-    frame += myIP # dir. IP del emisor
+    frame += struct.pack('!I', myIP) # dir. IP del emisor
     frame += bytes([0x00]*6) # dir. nula al ser opcode 0x0001
-    frame += struct.pack('!H', ip) # dir. ip del receptor
+    frame += struct.pack('!I', ip) # dir. ip del receptor
+    logging.debug('Función implementada')
 
     return frame
 
@@ -186,10 +199,10 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
     #TODO implementar aqui
     frame += ARPHeader # cabecera común
     frame += bytes([0x00, 0x02]) # opcode
-    frame += MAC # dir. ethernet (MAC) del emisor
-    frame += IP # dir. IP del emisor
-    frame += myMAC
-    frame += struct.pack('!H', myIP) # dir. ip del receptor
+    frame += myMAC # dir. ethernet (MAC) del emisor
+    frame += struct.pack('!I', myIP) # dir. IP del emisor 
+    frame += MAC
+    frame += struct.pack('!I', IP) # dir. ip del receptor
 
     return frame
 
@@ -198,7 +211,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     '''
         Nombre: process_arp_frame
         Descripción: Esta función procesa las tramas ARP. 
-            Se ejecutará por cada trama Ethenet que se reciba con Ethertype 0x0806 (si ha sido registrada en initARP). 
+            Se ejecutará por cada trama Ethernet que se reciba con Ethertype 0x0806 (si ha sido registrada en initARP). 
             Esta función debe realizar, al menos, las siguientes tareas:
                 -Extraer la cabecera común de ARP (6 primeros bytes) y comprobar que es correcta
                 -Extraer el campo opcode
