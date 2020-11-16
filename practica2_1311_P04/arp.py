@@ -130,8 +130,21 @@ def processARPReply(data:bytes,MAC:bytes)->None:
         Retorno: Ninguno
     '''
     global requestedIP,resolvedMAC,awaitingResponse,cache
-    logging.debug('Función no implentada')    
-    #TODO implementar aquí
+    macOrd = data[8:14]
+    ipOrd = struct.unpack('!I', data[14:18])[0]
+    macDest = data[18:24]
+    ipDest = struct.unpack('!I', data[24:28])[0]
+
+    if(MAC != myIP):
+        return
+    if(ipDest != myIP):
+        return
+    with globalLock:
+        resolvedMAC = macOrd
+        awaitingResponse = False
+        requestedIP = None
+    with cacheLock:
+        cache[ipOrd] = macOrd
         
 
 
@@ -261,6 +274,24 @@ def ARPResolution(ip:int) -> bytes:
             Como estas variables globales se leen y escriben concurrentemente deben ser protegidas con un Lock
     '''
     global requestedIP,awaitingResponse,resolvedMAC
-    logging.debug('Función no implementada')
-    #TODO implementar aquí
+    
+    with cacheLock:
+        if ip in cache:
+            return cache[ip]
+    
+    with globalLock:
+        awaitingResponse = True
+        requestedIP = ip
+        peticion = createARPReply(ip)
+    
+    for i in range(3):
+        sendEthernetFrame(peticion, len(peticion), 0x0806, broadcastAddr)
+        time.sleep(0.1)
+        with globalLock:
+            if awaitingResponse == False:
+                return resolvedMAC
+        
+    with globalLock:
+        awaitingResponse = False
+        
     return None

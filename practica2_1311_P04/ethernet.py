@@ -163,7 +163,6 @@ def startEthernetLevel(interface:str) -> int:
     '''
     global macAddress,handle,levelInitialized,recvThread
     handle = None
-    logging.debug('Función no implementada')
     #TODO: implementar aquí la inicialización de la interfaz y de las variables globales
     if levelInitialized:
         return -1
@@ -221,6 +220,23 @@ def sendEthernetFrame(data:bytes,len:int,etherType:int,dstMac:bytes) -> int:
         Retorno: 0 si todo es correcto, -1 en otro caso
     '''
     global macAddress,handle
-    logging.debug('Función no implementada')
     
+    trama = bytes()
+    trama = dstMac + macAddress + struct.pack('!H', etherType) + data
+
+    if len+14>ETH_FRAME_MAX:
+        return -1
+
+    tam = ETH_FRAME_MIN - 14 - len
+
+    if tam<0:
+        len += 14
+    else:
+        trama += bytes([0x00]*tam)
+        len = 60
+
+    if pcap_inject(handle, bytes(trama), ETH_FRAME_MIN) is None:
+        return -1
+
+    return 0
         
