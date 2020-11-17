@@ -1,0 +1,14 @@
+MIGUEL GARCÍA GONZÁLEZ, DIEGO FRANCISCO CANO, JAVIER FEŔNÁNDEZ DE ALARCÓN
+
+
+    -Normativa de entrega cumplida en su totalidad: REALIZADO. Se cumplen las pautas descritas para la entrega.
+    -Fichero leeme.txt bien explicado: REALIZADO. 
+    -Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la función de callback de nivel superior: REALIZADO. Revisando nuestro código, en process_Ethernet_frame vemos que comprobamos todo lo necesario, y se llama a la función pertinente. Por otro lado, llevando a cabo las pruebas descritas en el enunciado de la práctica vemos que todo funciona como debe.
+    -Enviar tramas Ethernet correctamente: REALIZADO. Revisando el código vemos que asignamos los campos como debemos, y también tenemos en cuenta las comprobaciones de tamaño. Además, comprobamos con las pruebas a realizar descritas en el enunciado, que todo funciona como debe.
+    -Enviar correctamente peticiones ARP: REALIZADO. Creamos correctamente las ARP request. Lo vemos revusando nuestro código, viendo las capturas en wireshark, y que las pruebas indicadas por el enunciado funcionan correctamente.
+    -Procesar correctamente peticiones ARP recibidas: REALIZADO. Revisando el código, hacemos las comprobaciones pertinentes, creamos una respuesta, y la enviamos. También hemos comprobado el correcto funcionamiento haciendo las pruebas indicadas en el enunciado.
+    -Enviar correctamente respuestas ARP: REALIZADO. Las respuestas son enviadas correctamente, ya que en wireshark vemos el paquete creado por nosotros de respuesta. Hacemos las pruebas del enunciado de la práctica.
+    -Procesar correctamente respuestas ARP: REALIZADO. Vemos que las respuestas se procesan correctamente con las pruebas de resolución de direcciones indicadas en el enunciado. Vemos que la asociación de IP con MAC se guardan en la caché ARP.
+    -Manejo correcto de la caché ARP: REALIZADO. La caché guarda las asociaciones IP-MAC correctamente, haciendo uso de Locks. Las pruebas a realizar indicadas en el enunciado son satisfechas.
+    -Uso correcto de Locks: REALIZADO. Vemos que las pruebas a realizar por el enunciado son satifechas. Hacemos uso de Locks para el manejo de variables que pueden ser accedidas concurrentemente por varias funciones. 
+    -Realiza correctamente el ARP gratuito: REALIZADO. Probando a tener la misma IP en h1 y h2, como se nos dice en las pruebas del enunciado. Vemos que habiendo iniciado el programa en uno de los dos, y queriendo iniciarlo en el otro, el programa no llega a iniciarse porque se realiza la comprobación enviando un ARP gratuito y se recibe respuesta.
