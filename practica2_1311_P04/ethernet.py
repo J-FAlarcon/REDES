@@ -12,7 +12,7 @@ import struct
 from binascii import hexlify
 import struct 
 import threading 
-#Tamaño máximo de una trama Ethernet (para las prácticas)
+#Tamaño máximo de una trama Ethernet (para las prácticas) 
 ETH_FRAME_MAX = 1514
 #Tamaño mínimo de una trama Ethernet
 ETH_FRAME_MIN = 60
@@ -22,8 +22,10 @@ NO_PROMISC = 0
 TO_MS = 10
 #Dirección de difusión (Broadcast)
 broadcastAddr = bytes([0xFF]*6)
-#Diccionario que alamacena para un Ethertype dado qué función de callback se debe ejecutar
-upperProtos = {}
+#Diccionario que almacena para un Ethertype dado qué función de callback se debe ejecutar
+upperProtos = {} #guarda el etherType como array de bytes
+
+levelInitialized = False;
 
 def getHwAddr(interface:str):
     '''
@@ -32,7 +34,7 @@ def getHwAddr(interface:str):
         Argumentos:
             -interface: Cadena con el nombre de la interfaz
         Retorno:
-            -Dirección MAC de la itnerfaz
+            -Dirección MAC de la interfaz
     '''
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
     s.bind((interface,0))
@@ -65,11 +67,10 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     '''
     logging.debug('Trama nueva. Función en pruebas')
 
-    #TODO: Implementar aquí el código que procesa una trama Ethernet en recepción
     #Extracción de campos
     destino = data[:6]
     origen = data[6:12]
-    ethertype = data[12:14]
+    ethertype = struct.unpack('!H', data[12:14])[0]
     payload = data[14:]
     header.len -= ETH_HLEN
     
@@ -127,8 +128,8 @@ def registerCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes]
         Descripción: Esta función recibirá el nombre de una función y su valor de ethertype asociado y añadirá en la tabla 
             (diccionario) de protocolos de nivel superior el dicha asociación. 
             Este mecanismo nos permite saber a qué función de nivel superior debemos llamar al recibir una trama de determinado tipo. 
-            Por ejemplo, podemos registrar una función llamada process_IP_datagram asociada al Ethertype 0x0800 y otra llamada process_arp_packet 
-            asocaida al Ethertype 0x0806. 
+            Por ejemplo, podemos registrar una función llamada process_IP_datagram asociada al Ethertype 0x0800 y otra llamada process_arp_frame 
+            asociada al Ethertype 0x0806. 
         Argumentos:
             -callback_fun: función de callback a ejecutar cuando se reciba el Ethertype especificado. 
                 La función que se pase como argumento debe tener el siguiente prototipo: funcion(us,header,data,srcMac)
@@ -142,7 +143,7 @@ def registerCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes]
         Retorno: Ninguno 
     '''
     global upperProtos
-    upperProtos[ethertype] = callback_fun
+    upperProtos[ethertype] = callback_func
     #upperProtos es el diccionario que relaciona función de callback y ethertype
     return
     
@@ -163,8 +164,8 @@ def startEthernetLevel(interface:str) -> int:
     '''
     global macAddress,handle,levelInitialized,recvThread
     handle = None
-    #TODO: implementar aquí la inicialización de la interfaz y de las variables globales
-    if levelInitialized:
+
+    if levelInitialized == True:
         return -1
     errbuf = bytearray()
     macAddress = getHwAddr(interface)
@@ -178,7 +179,9 @@ def startEthernetLevel(interface:str) -> int:
     recvThread.daemon = True
     recvThread.start()
     levelInitialized = True
+
     return 0
+
 
 def stopEthernetLevel()->int:
     global macAddress,handle,levelInitialized,recvThread
@@ -192,7 +195,7 @@ def stopEthernetLevel()->int:
         Argumentos: Ninguno
         Retorno: 0 si todo es correcto y -1 en otro caso
     '''
-    recvThread().stop()
+    recvThread.stop()
 
     pcap_close(handle)
 
@@ -235,7 +238,7 @@ def sendEthernetFrame(data:bytes,len:int,etherType:int,dstMac:bytes) -> int:
         trama += bytes([0x00]*tam)
         len = 60
 
-    if pcap_inject(handle, bytes(trama), ETH_FRAME_MIN) is None:
+    if pcap_inject(handle, trama, ETH_FRAME_MIN) is None:
         return -1
 
     return 0

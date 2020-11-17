@@ -29,9 +29,10 @@ ARP_HLEN = 6
 requestedIP = None
 #Variable que alamacenará que dirección MAC resuelta o None si no se ha podido obtener
 resolvedMAC = None
-#Variable que alamacenará True mientras estemos esperando una respuesta ARP
+#Variable que almacenará True mientras estemos esperando una respuesta ARP
 awaitingResponse = False
 
+arpInitialized = False
 #Variable para proteger la caché
 cacheLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
@@ -92,28 +93,26 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
         Retorno: Ninguno
     '''
     global myIP
-    senderMAC = data[8:14]  '''6 bytes en la cabecera que corresponden a la direccion ethernet origen'''
+    senderMAC = data[8:14]  # 6 bytes en la cabecera que corresponden a la direccion ethernet origen
     if(MAC != senderMAC): 
         return
 
-    senderIP = data[14:18] '''4 bytes de la cabecera (en el array data)'''
-    targetIP = data[24:28] '''4 bytes de la cabecera (en el array data)'''
+    senderIP = struct.unpack('!I', data[14:18])[0] # 4 bytes de la cabecera (en el array data)
+    targetIP = struct.unpack('!I', data[24:28])[0] # 4 bytes de la cabecera (en el array data)
 
-    nIP = struct.unpack('!I', targetIP)
 
-    if(nIP != myIP):
+    if(targetIP != myIP):
         return
     else:
-        tipo = bytes([0x08, 0x06])
-        etherType = struct.unpack('!H', tipo)
-        targetMAC = ARPResolution(nIP) 
-        frame = createARPReply(nIP, MAC)
-        sendEthernetFrame(frame, len(frame), etherType, targetMAC)
+        
+        frame = createARPReply(senderIP, MAC)
+        sendEthernetFrame(frame, len(frame), 0x0806, senderMAC)
 
 
 
     logging.debug('Función no implementada')
-    #TODO implementar aquí
+
+
 def processARPReply(data:bytes,MAC:bytes)->None:
     '''
         Nombre: processARPReply
@@ -142,16 +141,17 @@ def processARPReply(data:bytes,MAC:bytes)->None:
     if senderMAC != MAC:
         return
 
-    senderIP = data[14:18]
+    senderIP = struct.unpack('!I', data[14:18])[0]
     targetMAC = data[18:24]
-    targetIP = struct.unpack('!I', data[24:28])
+    targetIP = struct.unpack('!I', data[24:28])[0]
 
     if(targetIP != myIP):
         return
 
     with globalLock:
-        if targetIP != requestedIP:
+        if senderIP != requestedIP:
             return
+
         resolvedMAC = senderMAC
         awaitingResponse = False
         requestedIP = None
@@ -227,15 +227,13 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
         Retorno: Ninguno
     '''
     logging.debug('Función en pruebas')
-    #TODO implementar aquí
     
-
-    payload = data[6:]
+    
     if data[:6] == ARPHeader:
         if data[6:8] == bytes([0x00,0x01]):
-            processARPRequest(payload, srcMac)
+            processARPRequest(data, srcMac)
         elif data[6:8] == bytes([0x00, 0x02]):
-            processARPReply(payload, srcMac)
+            processARPReply(data, srcMac)
         else:
             return
 
@@ -254,14 +252,21 @@ def initARP(interface:str) -> int:
             -Marcar la variable de nivel ARP inicializado a True
     '''
     global myIP,myMAC,arpInitialized
+
+    if arpInitialized:
+        return -1
+
     b = bytes([0x08, 0x06])
-    etherType = struct.unpack('!H', b)
+    etherType = struct.unpack('!H', b)[0]
     registerCallback(process_arp_frame, etherType)
     myIP = getIP(interface)
     myMAC = getHwAddr(interface)
 
     gratuito = ARPResolution(myIP)
     if(gratuito != None):
+        logging.info('ARP Gratuito ha fallado.')
+        print('La siguiente MAC ha respondido:')
+        print(':'.join(['{:02X}'.format(b) for b in gratuito]))
         return -1
 
     arpInitialized = True
@@ -297,21 +302,19 @@ def ARPResolution(ip:int) -> bytes:
         if ip in cache:
             return cache[ip]
     
+    peticion = createARPRequest(ip)
+
     with globalLock:
         awaitingResponse = True
         requestedIP = ip
-        peticion = createARPRequest(ip)
     
-    etherType = struct.unpack('!H', bytes([0x08, 0x06]))
 
     for i in range(3):
-        sendEthernetFrame(peticion, len(peticion), etherType, broadcastAddr)
+        sendEthernetFrame(peticion, len(peticion), 0x0806, broadcastAddr)
         time.sleep(0.1)
         with globalLock:
             if awaitingResponse == False:
                 return resolvedMAC
-        
-    with globalLock:
-        awaitingResponse = False
+
         
     return None
